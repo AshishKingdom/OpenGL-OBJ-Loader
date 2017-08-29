@@ -1,0 +1,35 @@
+# Blender MTL File: 'None'
+# Material Count: 3
+
+newmtl Plastic
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.247843 0.564706 0.269804
+Ks 0.449020 0.449020 0.449020
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd oil_container/GreenCol.jpg
+
+newmtl cap
+Ns 36.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.652549 0.724706 0.614902
+Ks 0.449020 0.449020 0.449020
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd oil_container/grad_213.png
+
+newmtl st_textile
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.687059 0.445490 0.326275
+Ks 0.449020 0.449020 0.449020
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd oil_container/logo.png
