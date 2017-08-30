@@ -42,7 +42,7 @@ model_texture_file$ = ""
 IF _COMMANDCOUNT = 1 OR _COMMANDCOUNT = 2 THEN model_file$ = COMMAND$(1)
 
 'this variable can be set to "", if you don't have textures.
-model_texture_file$ = "textures/sf-01.png"
+model_texture_file$ = ""
 IF _COMMANDCOUNT = 1 THEN model_texture_file$ = ""
 IF _COMMANDCOUNT = 2 THEN model_texture_file$ = COMMAND$(2)
 
@@ -665,7 +665,7 @@ FUNCTION map! (value!, minRange!, maxRange!, newMinRange!, newMaxRange!)
     map! = ((value! - minRange!) / (maxRange! - minRange!)) * (newMaxRange! - newMinRange!) + newMinRange!
 END FUNCTION
 
-
+$checking:off
 'below, all functions are coded by Galleon
 FUNCTION GLH_Image_to_Texture (image_handle AS LONG) 'turn an image handle into a texture handle
     IF image_handle >= 0 THEN ERROR 258: EXIT FUNCTION 'don't allow screen pages
