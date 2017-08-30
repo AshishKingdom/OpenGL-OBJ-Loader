@@ -595,9 +595,9 @@ SUB _GL () STATIC
                     END IF
                     _glNormal3f model_faces(i).v2.vn.x, model_faces(i).v2.vn.y, model_faces(i).v2.vn.z
                     _glVertex3f model_faces(i).v2.v.x, model_faces(i).v2.v.y, model_faces(i).v2.v.z
-
+					
+					IF use_texture_in_opengl = -1 THEN
                         _glTexCoord2f model_faces(i).v3.vt.x, -model_faces(i).v3.vt.y
-                    IF use_texture_in_opengl = -1 THEN
                     END IF
                     _glNormal3f model_faces(i).v3.vn.x, model_faces(i).v3.vn.y, model_faces(i).v3.vn.z
                     _glVertex3f model_faces(i).v3.v.x, model_faces(i).v3.v.y, model_faces(i).v3.v.z
