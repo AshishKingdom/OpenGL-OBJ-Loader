@@ -273,6 +273,8 @@ WHILE NOT EOF(f)
             ELSE
                 v_index = VAL(MID$(face_data$, 1, k1 - 1))
             END IF
+			vt_index = VAL(MID$(face_data$, k1 + 1, k2 - (k1 + 1)))
+			
             IF k2 <> 0 THEN vn_index = VAL(RIGHT$(face_data$, LEN(face_data$) - k2))
 
             'vertex data
@@ -582,20 +584,20 @@ SUB _GL () STATIC
                     END IF
 
                     IF use_texture_in_opengl = -1 THEN
-                        _glTexCoord2f model_faces(i).v1.vt.x, model_faces(i).v1.vt.y
+                        _glTexCoord2f model_faces(i).v1.vt.x, -model_faces(i).v1.vt.y
                     END IF
 
                     _glNormal3f model_faces(i).v1.vn.x, model_faces(i).v1.vn.y, model_faces(i).v1.vn.z
                     _glVertex3f model_faces(i).v1.v.x, model_faces(i).v1.v.y, model_faces(i).v1.v.z
 
                     IF use_texture_in_opengl = -1 THEN
-                        _glTexCoord2f model_faces(i).v2.vt.x, model_faces(i).v2.vt.y
+                        _glTexCoord2f model_faces(i).v2.vt.x, -model_faces(i).v2.vt.y
                     END IF
                     _glNormal3f model_faces(i).v2.vn.x, model_faces(i).v2.vn.y, model_faces(i).v2.vn.z
                     _glVertex3f model_faces(i).v2.v.x, model_faces(i).v2.v.y, model_faces(i).v2.v.z
 
+                        _glTexCoord2f model_faces(i).v3.vt.x, -model_faces(i).v3.vt.y
                     IF use_texture_in_opengl = -1 THEN
-                        _glTexCoord2f model_faces(i).v3.vt.x, model_faces(i).v3.vt.y
                     END IF
                     _glNormal3f model_faces(i).v3.vn.x, model_faces(i).v3.vn.y, model_faces(i).v3.vn.z
                     _glVertex3f model_faces(i).v3.v.x, model_faces(i).v3.v.y, model_faces(i).v3.v.z
