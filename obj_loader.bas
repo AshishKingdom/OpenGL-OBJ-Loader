@@ -388,9 +388,9 @@ WHILE NOT EOF(f)
     g = g + 1
 WEND
 CLOSE #f
-PRINT "Done. Hit Enter"
+' PRINT "Done. Hit Enter"
 ' for i = 1 to ubound(model_faces) : print model_faces(i).material.id :_limit 100: next
-a$ = INPUT$(1)
+' a$ = INPUT$(1)
 ' end
 CLS
 
@@ -478,10 +478,10 @@ SUB _GL () STATIC
         _glEnable _GL_LIGHTING
         _glEnable _GL_LIGHT0
 
-        _glLightfv _GL_LIGHT0, _GL_AMBIENT, glVec3(0.3, 0.3, 0.3)
-        _glLightfv _GL_LIGHT0, _GL_DIFFUSE, glVec3(0.7, 0.7, 0.7)
-        _glLightfv _GL_LIGHT0, _GL_SPECULAR, glVec3(1, 1, 1)
-        _glLightfv _GL_LIGHT0, _GL_POSITION, glVec4(SIN(clock#) * 5, 0, COS(clock#) * 5, 0)
+        _glLightfv _GL_LIGHT0, _GL_AMBIENT, glVec3(0.45, 0.45, 0.45)
+        _glLightfv _GL_LIGHT0, _GL_DIFFUSE, glVec3(0.6, 0.6, 0.6)
+        _glLightfv _GL_LIGHT0, _GL_SPECULAR, glVec3(0.6, 0.6, 0.6)
+        _glLightfv _GL_LIGHT0, _GL_POSITION, glVec4(0, 0, 25, 0)
     END IF
 
     _glMatrixMode _GL_PROJECTION
@@ -492,9 +492,6 @@ SUB _GL () STATIC
     _glLoadIdentity
 
     gluLookAt eye.x, eye.y, eye.z, cameraTarget.x, cameraTarget.y, cameraTarget.z, 0, 1, 0
-
-    _glRotatef -mouseX * 1.5, 0, 1, 0
-    _glRotatef mouseY * 1.5, 1, 0, 0
 
 
     IF wired_frame = -1 THEN
@@ -508,6 +505,9 @@ SUB _GL () STATIC
 			textured_model_buffer = _glGenLists(1)
 			_glNewList textured_model_buffer, _GL_COMPILE
 		end if
+		_glPushMatrix 'push
+		_glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
+		_glRotatef mouseY * 1.5, 1, 0, 0
         FOR o = 1 TO totalObjects
 		if done_task1 = 2 then
 		    _glCallList textured_model_buffer
@@ -605,6 +605,7 @@ SUB _GL () STATIC
                 END IF
             NEXT
             _glEnd
+			_glPopMatrix
         NEXT
 		if done_task1 = 1 then
 		    done_task1 = 2
