@@ -24,8 +24,7 @@
 '****************************************************************************************
 '****************************************************************************************
 'Found any bug, or, the loaded model doesn't seem to render accurately in this?
-'Then please report your bug at
-'or message me at twitter with @KingOfCoders
+'Then please report your bug at twitter, I'm @KingOfCoders
 'or email me at ashishkushwahacb@gmail.com
 
 'Have Fun!
@@ -49,10 +48,10 @@ IF _COMMANDCOUNT = 2 THEN model_texture_file$ = COMMAND$(2)
 _TITLE "OpenGL OBJ Loader - " + model_file$
 
 'finding the model directory
-for i = len(model_file$) to 1 step -1
-    ca$ = mid$(model_file$,i,1)
-	if ca$ = "/" or ca$ = "\" then path_to_model$ = left$(model_file$,i) : exit for
-next
+FOR i = LEN(model_file$) TO 1 STEP -1
+    ca$ = MID$(model_file$, i, 1)
+    IF ca$ = "/" OR ca$ = "\" THEN path_to_model$ = LEFT$(model_file$, i): EXIT FOR
+NEXT
 
 SCREEN _NEWIMAGE(1000, 700, 32)
 
@@ -83,7 +82,7 @@ TYPE model_material
     ambient AS vec3
     diffuse AS vec3
     specular AS vec3
-	emission as vec3
+    emission AS vec3
     tranparency AS DOUBLE
     shineness AS DOUBLE
     texture AS LONG
@@ -120,10 +119,10 @@ WHILE NOT EOF(f)
     IF LEFT$(info$, 2) = "vn" THEN vn_count = vn_count + 1
     IF LEFT$(info$, 2) = "f " THEN face_count = face_count + 1
     IF LEFT$(info$, 2) = "o " THEN o_count = o_count + 1
-    IF LEFT$(info$, 6) = "mtllib" THEN 
-	    material_file$ = Word$(info$, 2)
-		if instr(material_file$, ":") = 0 then material_file$ = path_to_model$+material_file$
-	end if
+    IF LEFT$(info$, 6) = "mtllib" THEN
+        material_file$ = Word$(info$, 2)
+        IF INSTR(material_file$, ":") = 0 THEN material_file$ = path_to_model$ + material_file$
+    END IF
 WEND
 CLOSE #f
 
@@ -184,7 +183,7 @@ IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
             material(mtl).specular.y = VAL(Word$(info$, 3))
             material(mtl).specular.z = VAL(Word$(info$, 4))
         END IF
-		'emission
+        'emission
         IF LEFT$(info$, 2) = "Ke" THEN
             material(mtl).emission.x = VAL(Word$(info$, 2))
             material(mtl).emission.y = VAL(Word$(info$, 3))
@@ -201,7 +200,7 @@ IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
         'texture mapping
         IF LEFT$(info$, 6) = "map_Kd" THEN
             temp_image_file$ = Word$(info$, 2)
-			if instr(temp_image_file$, ":") = 0 then temp_image_file$ = path_to_model$+temp_image_file$
+            IF INSTR(temp_image_file$, ":") = 0 THEN temp_image_file$ = path_to_model$ + temp_image_file$
             PRINT "Attempting to Load Image : - "; temp_image_file$
             IF _FILEEXISTS(temp_image_file$) THEN
                 PRINT "Image exists : "; temp_image_file$
@@ -209,8 +208,8 @@ IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
                 IF temp_image_handle < -1 THEN
                     material(mtl).texture = temp_image_handle
                     PRINT "Image loaded successfully : "; temp_image_file$
-                else
-				    print "Failed to load image : ";temp_image_file$
+                ELSE
+                    PRINT "Failed to load image : "; temp_image_file$
                 END IF
             ELSE
                 PRINT temp_image_file$; " : file doesn't exists"
@@ -238,7 +237,7 @@ WHILE NOT EOF(f)
             current_object_name$ = Word$(model_data$, 2)
             PRINT "[Object:- "; current_object_name$; "]"
         CASE "us"
-            IF Word$(model_data$, 1) = "usemtl" and len(material_file$) THEN
+            IF Word$(model_data$, 1) = "usemtl" AND LEN(material_file$) THEN
                 current_material_name$ = Word$(model_data$, 2)
                 FOR j = 1 TO UBOUND(material)
                     IF RTRIM$(material(j).mtl_name) = current_material_name$ THEN current_mtl = j: EXIT FOR
@@ -273,8 +272,8 @@ WHILE NOT EOF(f)
             ELSE
                 v_index = VAL(MID$(face_data$, 1, k1 - 1))
             END IF
-			vt_index = VAL(MID$(face_data$, k1 + 1, k2 - (k1 + 1)))
-			
+            vt_index = VAL(MID$(face_data$, k1 + 1, k2 - (k1 + 1)))
+            
             IF k2 <> 0 THEN vn_index = VAL(RIGHT$(face_data$, LEN(face_data$) - k2))
 
             'vertex data
@@ -368,12 +367,12 @@ WHILE NOT EOF(f)
                 model_faces(fc).material.specular.x = material(current_mtl).specular.x
                 model_faces(fc).material.specular.y = material(current_mtl).specular.y
                 model_faces(fc).material.specular.z = material(current_mtl).specular.z
-				
+                
                 model_faces(fc).material.emission.x = material(current_mtl).emission.x
                 model_faces(fc).material.emission.y = material(current_mtl).emission.y
                 model_faces(fc).material.emission.z = material(current_mtl).emission.z
                 
-				model_faces(fc).material.shineness = material(current_mtl).shineness
+                model_faces(fc).material.shineness = material(current_mtl).shineness
                 model_faces(fc).material.tranparency = material(current_mtl).tranparency
                 model_faces(fc).material.texture = material(current_mtl).texture
                     
@@ -463,8 +462,8 @@ SUB _GL () STATIC
                 _FREEIMAGE model_image&
             END IF
         END IF
-		wire_frame_model_buffer = 0
-		textured_model_buffer = 0
+        wire_frame_model_buffer = 0
+        textured_model_buffer = 0
         glSetup = -1
     END IF
 
@@ -499,21 +498,21 @@ SUB _GL () STATIC
         use_texture_in_opengl = 0
         current_material_id = 0
         current_texture_id = 0
-		'######## Code optimize for faster rendering ######
-		if done_task1 = 0 then
-		    done_task1 = 1
-			textured_model_buffer = _glGenLists(1)
-			_glNewList textured_model_buffer, _GL_COMPILE
-		end if
-		_glPushMatrix 'push
-		_glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
-		_glRotatef mouseY * 1.5, 1, 0, 0
+        '######## Code optimize for faster rendering ######
+        IF done_task1 = 0 THEN
+            done_task1 = 1
+            textured_model_buffer = _glGenLists(1)
+            _glNewList textured_model_buffer, _GL_COMPILE
+        END IF
+        _glPushMatrix 'push
+        _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
+        _glRotatef mouseY * 1.5, 1, 0, 0
         FOR o = 1 TO totalObjects
-		if done_task1 = 2 then
-		    _glCallList textured_model_buffer
-			exit for
-		end if
-		'#################################################
+            IF done_task1 = 2 THEN
+                _glCallList textured_model_buffer
+                EXIT FOR
+            END IF
+            '#################################################
             FOR i = 1 TO UBOUND(model_faces)
                 surface_init = 0
                 use_texture_in_opengl = 0
@@ -530,15 +529,15 @@ SUB _GL () STATIC
 
                                 use_texture_in_opengl = -1
                             END IF
-							
-							'TURN on blending according to our beautiful model needs.
-                            if model_faces(i).material.tranparency <> 1 then _glEnable _GL_BLEND else _glDisable _GL_BLEND
-							
+                            
+                            'TURN on blending according to our beautiful model needs.
+                            IF model_faces(i).material.tranparency <> 1 THEN _glEnable _GL_BLEND ELSE _glDisable _GL_BLEND
+                            
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_AMBIENT, glVec4(model_faces(i).material.ambient.x, model_faces(i).material.ambient.y, model_faces(i).material.ambient.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_DIFFUSE, glVec4(model_faces(i).material.diffuse.x, model_faces(i).material.diffuse.y, model_faces(i).material.diffuse.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_SPECULAR, glVec4(model_faces(i).material.specular.x, model_faces(i).material.specular.y, model_faces(i).material.specular.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_EMISSION, glVec4(model_faces(i).material.emission.x, model_faces(i).material.emission.y, model_faces(i).material.emission.z, model_faces(i).material.tranparency)
-							_glMaterialfv _GL_FRONT_AND_BACK, _GL_SHININESS, glVec3(model_faces(i).material.shineness * 0.128, 0, 0)
+                            _glMaterialfv _GL_FRONT_AND_BACK, _GL_SHININESS, glVec3(model_faces(i).material.shineness * 0.128, 0, 0)
                         ELSE
                             IF LEN(model_texture_file$) THEN
                                 GLH_Select_Texture model_texture
@@ -571,12 +570,12 @@ SUB _GL () STATIC
                                 use_texture_in_opengl = -1
                             END IF
                             
-                            if model_faces(i).material.tranparency <> 1 then _glEnable _GL_BLEND else _glDisable _GL_BLEND
+                            IF model_faces(i).material.tranparency <> 1 THEN _glEnable _GL_BLEND ELSE _glDisable _GL_BLEND
                             
-							_glMaterialfv _GL_FRONT_AND_BACK, _GL_AMBIENT, glVec4(model_faces(i).material.ambient.x, model_faces(i).material.ambient.y, model_faces(i).material.ambient.z, model_faces(i).material.tranparency)
+                            _glMaterialfv _GL_FRONT_AND_BACK, _GL_AMBIENT, glVec4(model_faces(i).material.ambient.x, model_faces(i).material.ambient.y, model_faces(i).material.ambient.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_DIFFUSE, glVec4(model_faces(i).material.diffuse.x, model_faces(i).material.diffuse.y, model_faces(i).material.diffuse.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_SPECULAR, glVec4(model_faces(i).material.specular.x, model_faces(i).material.specular.y, model_faces(i).material.specular.z, model_faces(i).material.tranparency)
-							_glMaterialfv _GL_FRONT_AND_BACK, _GL_EMISSION, glVec4(model_faces(i).material.emission.x, model_faces(i).material.emission.y, model_faces(i).material.emission.z, model_faces(i).material.tranparency)
+                            _glMaterialfv _GL_FRONT_AND_BACK, _GL_EMISSION, glVec4(model_faces(i).material.emission.x, model_faces(i).material.emission.y, model_faces(i).material.emission.z, model_faces(i).material.tranparency)
                             _glMaterialfv _GL_FRONT_AND_BACK, _GL_SHININESS, glVec3(model_faces(i).material.shineness * 0.128, 0, 0)
 
                             _glBegin _GL_TRIANGLES
@@ -595,8 +594,8 @@ SUB _GL () STATIC
                     END IF
                     _glNormal3f model_faces(i).v2.vn.x, model_faces(i).v2.vn.y, model_faces(i).v2.vn.z
                     _glVertex3f model_faces(i).v2.v.x, model_faces(i).v2.v.y, model_faces(i).v2.v.z
-					
-					IF use_texture_in_opengl = -1 THEN
+                    
+                    IF use_texture_in_opengl = -1 THEN
                         _glTexCoord2f model_faces(i).v3.vt.x, -model_faces(i).v3.vt.y
                     END IF
                     _glNormal3f model_faces(i).v3.vn.x, model_faces(i).v3.vn.y, model_faces(i).v3.vn.z
@@ -605,23 +604,26 @@ SUB _GL () STATIC
                 END IF
             NEXT
             _glEnd
-			_glPopMatrix
+            _glPopMatrix
         NEXT
-		if done_task1 = 1 then
-		    done_task1 = 2
-			_glEndList
-		end if
+        IF done_task1 = 1 THEN
+            done_task1 = 2
+            _glEndList
+        END IF
     ELSE
-	    '######## Code optimize for faster rendering ######
-	    if done_task2 = 0 then
-		    done_task2 = 1
-			wire_frame_model_buffer = _glGenLists(1)
-			_glNewList wire_frame_model_buffer, _GL_COMPILE
-		end if
-		if done_task2 = 2 then
-		    _glCallList wire_frame_model_buffer
-		end if
-		'####################################################
+        '######## Code optimize for faster rendering ######
+        IF done_task2 = 0 THEN
+            done_task2 = 1
+            wire_frame_model_buffer = _glGenLists(1)
+            _glNewList wire_frame_model_buffer, _GL_COMPILE
+        END IF
+        _glPushMatrix 'push
+        _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
+        _glRotatef mouseY * 1.5, 1, 0, 0
+        IF done_task2 = 2 THEN
+            _glCallList wire_frame_model_buffer
+        END IF
+        '####################################################
         _glColor3f 1, 1, 1
         FOR i = 1 TO UBOUND(model_faces)
             _glBegin _GL_LINE_LOOP
@@ -635,9 +637,10 @@ SUB _GL () STATIC
             _glVertex3f model_faces(i).v3.v.x, model_faces(i).v3.v.y, model_faces(i).v3.v.z
             _glEnd
         NEXT
-		if done_task2 = 1 then
-		    _glEndList
-		end if
+        _glPopMatrix
+        IF done_task2 = 1 THEN
+            _glEndList
+        END IF
     END IF
 
     _glFlush
@@ -666,7 +669,7 @@ FUNCTION map! (value!, minRange!, maxRange!, newMinRange!, newMaxRange!)
     map! = ((value! - minRange!) / (maxRange! - minRange!)) * (newMaxRange! - newMinRange!) + newMinRange!
 END FUNCTION
 
-$checking:off
+$CHECKING:OFF
 'below, all functions are coded by Galleon
 FUNCTION GLH_Image_to_Texture (image_handle AS LONG) 'turn an image handle into a texture handle
     IF image_handle >= 0 THEN ERROR 258: EXIT FUNCTION 'don't allow screen pages
