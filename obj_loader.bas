@@ -33,10 +33,10 @@
 
 _GLRENDER _BEHIND
 
-DIM SHARED model_texture_file$, model_file$, material_file$
+DIM SHARED model_texture_file$, model_file$, use_material
 
-material_file$ = ""
-model_file$ = "models/pyramid.obj"
+use_material = 0
+model_file$ = "models/oil_container.obj"
 model_texture_file$ = ""
 IF _COMMANDCOUNT = 1 OR _COMMANDCOUNT = 2 THEN model_file$ = COMMAND$(1)
 
@@ -91,7 +91,7 @@ TYPE model_material
     id AS _UNSIGNED LONG
 END TYPE
 
-TYPE triangular_face
+TYPE model_definition
     v1 AS triangular_face_vertex
     v2 AS triangular_face_vertex
     v3 AS triangular_face_vertex
@@ -99,7 +99,6 @@ TYPE triangular_face
     obj_name AS STRING * 128
     obj_id AS _UNSIGNED LONG
 END TYPE
-
 
 f = FREEFILE
 
@@ -110,7 +109,7 @@ vn_count = 0
 face_count = 0
 
 PRINT "Getting Information about model. Please be patient."
-
+start_time# = timer
 OPEN model_file$ FOR INPUT AS #f
 WHILE NOT EOF(f)
     LINE INPUT #f, info$
@@ -118,126 +117,117 @@ WHILE NOT EOF(f)
     IF LEFT$(info$, 2) = "vt" THEN vt_count = vt_count + 1
     IF LEFT$(info$, 2) = "vn" THEN vn_count = vn_count + 1
     IF LEFT$(info$, 2) = "f " THEN face_count = face_count + 1
-    IF LEFT$(info$, 2) = "o " THEN o_count = o_count + 1
-    IF LEFT$(info$, 6) = "mtllib" THEN
-        material_file$ = Word$(info$, 2)
-        IF INSTR(material_file$, ":") = 0 THEN material_file$ = path_to_model$ + material_file$
-    END IF
 WEND
 CLOSE #f
 
-PRINT "Model has - "
-PRINT "Total Objects : "; o_count
-PRINT "Vertices : "; v_count
-PRINT "Texture Coordinates (UVs) : "; vt_count
-PRINT "Normals : "; vn_count
-IF LEN(material_file$) = 0 THEN msg$ = "[none]" ELSE msg$ = material_file$
-PRINT "Material Library : "; msg$
-PRINT "Press any key to continue"
-a$ = INPUT$(1)
-PRINT
-PRINT "Loading Model."
-
 
 DIM SHARED totalObjects
-totalObjects = o_count
 DIM vertices(v_count) AS vec3
 DIM texture_coordinates(vt_count) AS vec3
 DIM normals(vn_count) AS vec3
-' dim objects(o_count) as model_objects
-DIM SHARED model_faces(face_count) AS triangular_face
-
-'################ Materials #########################
-IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
-    PRINT "Reading Materials"
-    mtl_count = 0
-    OPEN material_file$ FOR INPUT AS #f
-    WHILE NOT EOF(f)
-        LINE INPUT #f, info$
-        IF LEFT$(info$, 6) = "newmtl" THEN mtl_count = mtl_count + 1
-    WEND
-    CLOSE #f
-    PRINT "Total Materials : "; mtl_count
-    
-    DIM SHARED material(mtl_count) AS model_material
-    mtl = 0
-    OPEN material_file$ FOR INPUT AS #f
-    WHILE NOT EOF(f)
-        LINE INPUT #f, info$
-        IF LEFT$(info$, 6) = "newmtl" THEN mtl = mtl + 1: material(mtl).mtl_name = Word$(info$, 2): material(mtl).id = mtl
-        'ambient
-        IF LEFT$(info$, 2) = "Ka" THEN
-            material(mtl).ambient.x = VAL(Word$(info$, 2))
-            material(mtl).ambient.y = VAL(Word$(info$, 3))
-            material(mtl).ambient.z = VAL(Word$(info$, 4))
-        END IF
-        'diffuse
-        IF LEFT$(info$, 2) = "Kd" THEN
-            material(mtl).diffuse.x = VAL(Word$(info$, 2))
-            material(mtl).diffuse.y = VAL(Word$(info$, 3))
-            material(mtl).diffuse.z = VAL(Word$(info$, 4))
-        END IF
-        'specular
-        IF LEFT$(info$, 2) = "Ks" THEN
-            material(mtl).specular.x = VAL(Word$(info$, 2))
-            material(mtl).specular.y = VAL(Word$(info$, 3))
-            material(mtl).specular.z = VAL(Word$(info$, 4))
-        END IF
-        'emission
-        IF LEFT$(info$, 2) = "Ke" THEN
-            material(mtl).emission.x = VAL(Word$(info$, 2))
-            material(mtl).emission.y = VAL(Word$(info$, 3))
-            material(mtl).emission.z = VAL(Word$(info$, 4))
-        END IF
-        'shineness
-        IF LEFT$(info$, 2) = "Ns" THEN
-            material(mtl).shineness = VAL(Word$(info$, 2))
-        END IF
-        'tranparency
-        IF LEFT$(info$, 2) = "d " THEN
-            material(mtl).tranparency = VAL(Word$(info$, 2))
-        END IF
-        'texture mapping
-        IF LEFT$(info$, 6) = "map_Kd" THEN
-            temp_image_file$ = Word$(info$, 2)
-            IF INSTR(temp_image_file$, ":") = 0 THEN temp_image_file$ = path_to_model$ + temp_image_file$
-            PRINT "Attempting to Load Image : - "; temp_image_file$
-            IF _FILEEXISTS(temp_image_file$) THEN
-                PRINT "Image exists : "; temp_image_file$
-                temp_image_handle = _LOADIMAGE(temp_image_file$, 32)
-                IF temp_image_handle < -1 THEN
-                    material(mtl).texture = temp_image_handle
-                    PRINT "Image loaded successfully : "; temp_image_file$
-                ELSE
-                    PRINT "Failed to load image : "; temp_image_file$
-                END IF
-            ELSE
-                PRINT temp_image_file$; " : file doesn't exists"
-            END IF
-        END IF
-        PRINT ".";
-    WEND
-    CLOSE #f
-END IF
+DIM SHARED model_faces(face_count) AS model_definition
 
 v = 1
 vt = 1
 vn = 1
 fc = 1
-o = 0
 
-
-' f = freefile
+f = FREEFILE
 OPEN model_file$ FOR INPUT AS #f
 WHILE NOT EOF(f)
     LINE INPUT #f, model_data$
     SELECT CASE LEFT$(model_data$, 2)
+        CASE "mt"
+            IF Word$(model_data$, 1) = "mtllib" THEN
+                material_file$ = Word$(model_data$, 2)
+				IF INSTR(material_file$, ":") = 0 THEN material_file$ = path_to_model$ + material_file$
+                '################ Materials #########################
+                IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
+				
+					print "Reading Material File : ";material_file$
+					
+                    IF mtl = 0 THEN REDIM SHARED material(1) AS model_material: mtl = 1
+					
+					material_file_handle = freefile
+					
+                    OPEN material_file$ FOR INPUT AS #material_file_handle
+					
+                    WHILE NOT EOF(material_file_handle)
+                        LINE INPUT #material_file_handle, info$
+                        IF LEFT$(info$, 6) = "newmtl" THEN
+                            REDIM _PRESERVE SHARED material(mtl + 1) AS model_material
+							mtl = mtl+1
+                            material(mtl).mtl_name = Word$(info$, 2)
+                            material(mtl).id = mtl
+                        END IF
+                        'ambient
+                        IF LEFT$(info$, 2) = "Ka" THEN
+                            material(mtl).ambient.x = VAL(Word$(info$, 2))
+                            material(mtl).ambient.y = VAL(Word$(info$, 3))
+                            material(mtl).ambient.z = VAL(Word$(info$, 4))
+                        END IF
+                        'diffuse
+                        IF LEFT$(info$, 2) = "Kd" THEN
+                            material(mtl).diffuse.x = VAL(Word$(info$, 2))
+                            material(mtl).diffuse.y = VAL(Word$(info$, 3))
+                            material(mtl).diffuse.z = VAL(Word$(info$, 4))
+                        END IF
+                        'specular
+                        IF LEFT$(info$, 2) = "Ks" THEN
+                            material(mtl).specular.x = VAL(Word$(info$, 2))
+                            material(mtl).specular.y = VAL(Word$(info$, 3))
+                            material(mtl).specular.z = VAL(Word$(info$, 4))
+                        END IF
+                        'emission
+                        IF LEFT$(info$, 2) = "Ke" THEN
+                            material(mtl).emission.x = VAL(Word$(info$, 2))
+                            material(mtl).emission.y = VAL(Word$(info$, 3))
+                            material(mtl).emission.z = VAL(Word$(info$, 4))
+                        END IF
+                        'shineness
+                        IF LEFT$(info$, 2) = "Ns" THEN
+                            material(mtl).shineness = VAL(Word$(info$, 2))
+                        END IF
+                        'tranparency
+                        IF LEFT$(info$, 2) = "d " THEN
+                            material(mtl).tranparency = VAL(Word$(info$, 2))
+                        END IF
+                        'texture mapping
+                        IF LEFT$(info$, 6) = "map_Kd" THEN
+						
+                            temp_image_file$ = Word$(info$, 2)
+                            IF INSTR(temp_image_file$, ":") = 0 THEN temp_image_file$ = path_to_model$ + temp_image_file$
+                            PRINT "Attempting to Load Image : - "; temp_image_file$
+							
+                            IF _FILEEXISTS(temp_image_file$) THEN
+                                PRINT "Image exists : "; temp_image_file$
+                                temp_image_handle = _LOADIMAGE(temp_image_file$, 32)
+								
+                                IF temp_image_handle < -1 THEN
+                                    material(mtl).texture = temp_image_handle
+                                    PRINT "Image loaded successfully : "; temp_image_file$
+                                ELSE
+                                    PRINT "Failed to load image : "; temp_image_file$
+                                END IF
+								
+                            ELSE
+                                PRINT temp_image_file$; " : file doesn't exists"
+                            END IF
+							
+                        END IF
+                        PRINT ".";
+                    WEND
+                    CLOSE #material_file_handle
+					use_material = -1
+                END IF
+            END IF
         CASE "o "
             o = o + 1
             current_object_name$ = Word$(model_data$, 2)
             PRINT "[Object:- "; current_object_name$; "]"
+			totalObjects = totalObjects + 1
         CASE "us"
-            IF Word$(model_data$, 1) = "usemtl" AND LEN(material_file$) THEN
+            IF Word$(model_data$, 1) = "usemtl" AND use_material THEN
                 current_material_name$ = Word$(model_data$, 2)
                 FOR j = 1 TO UBOUND(material)
                     IF RTRIM$(material(j).mtl_name) = current_material_name$ THEN current_mtl = j: EXIT FOR
@@ -248,17 +238,20 @@ WHILE NOT EOF(f)
             vertices(v).x = VAL(Word$(model_data$, 2))
             vertices(v).y = VAL(Word$(model_data$, 3))
             vertices(v).z = VAL(Word$(model_data$, 4))
+            ' REDIM _PRESERVE vertices(v + 1) AS vec3
             v = v + 1
         CASE "vt"
             IF vt = 1 THEN PRINT: PRINT "Reading Texture Coordinates"
             texture_coordinates(vt).x = VAL(Word$(model_data$, 2))
             texture_coordinates(vt).y = VAL(Word$(model_data$, 3))
+            ' REDIM _PRESERVE texture_coordinates(vt + 1) AS vec3
             vt = vt + 1
         CASE "vn"
             IF vn = 1 THEN PRINT: PRINT "Reading Normals"
             normals(vn).x = VAL(Word$(model_data$, 2))
             normals(vn).y = VAL(Word$(model_data$, 3))
             normals(vn).z = VAL(Word$(model_data$, 4))
+            ' REDIM _PRESERVE normals(vn + 1) AS vec3
             vn = vn + 1
         CASE "f "
             IF fc = 1 THEN PRINT: PRINT "Reading Faces"
@@ -352,7 +345,7 @@ WHILE NOT EOF(f)
             '################ Objects and Material #################
             model_faces(fc).obj_name = current_object_name$
                 
-            IF LEN(material_file$) THEN
+            IF use_material THEN
                 'should be set only if the material file is available
                 model_faces(fc).material.mtl_name = current_material_name$
                     
@@ -380,17 +373,16 @@ WHILE NOT EOF(f)
             END IF
                 
             model_faces(fc).obj_id = o
-                
+            
+            ' REDIM _PRESERVE model_faces(fc + 1) AS model_definition
             fc = fc + 1
     END SELECT
     IF g MOD 200 = 0 THEN PRINT ".";
     g = g + 1
 WEND
 CLOSE #f
-' PRINT "Done. Hit Enter"
-' for i = 1 to ubound(model_faces) : print model_faces(i).material.id :_limit 100: next
-' a$ = INPUT$(1)
-' end
+time_taken# = timer-start_time#
+
 CLS
 
 REDIM SHARED DONT_USE_GLH_Handle(1000) AS DONT_USE_GLH_Handle_TYPE
@@ -427,6 +419,7 @@ DO
     mouseX = _MOUSEX
     mouseY = _MOUSEY
     CLS , 1
+	PRINT "TIME TAKEN TO LOAD : ";time_taken#;"s"
     PRINT "Press 'w' & 's' to move forward & backward"
     PRINT "Press 'a' & 'd' to move left & right"
     PRINT "Pres 'q' & 'e' to move up & down"
@@ -451,7 +444,7 @@ SUB _GL () STATIC
     IF NOT glSetup THEN
         _glViewport 0, 0, _WIDTH, _HEIGHT
         aspect# = _WIDTH / _HEIGHT
-        IF LEN(material_file$) THEN
+        IF use_material THEN
             FOR i = 1 TO UBOUND(material)
                 IF material(i).texture < -1 THEN material(i).gl_tex = GLH_Image_to_Texture(material(i).texture)
             NEXT
@@ -469,7 +462,7 @@ SUB _GL () STATIC
 
     _glEnable _GL_DEPTH_TEST
 
-    IF LEN(material_file$) OR LEN(model_texture_file$) THEN
+    IF use_material OR LEN(model_texture_file$) THEN
         _glEnable _GL_TEXTURE_2D
     END IF
 
@@ -504,12 +497,13 @@ SUB _GL () STATIC
             textured_model_buffer = _glGenLists(1)
             _glNewList textured_model_buffer, _GL_COMPILE
         END IF
-        _glPushMatrix 'push
-        _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
-        _glRotatef mouseY * 1.5, 1, 0, 0
         FOR o = 1 TO totalObjects
             IF done_task1 = 2 THEN
+                _glPushMatrix 'push
+                _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
+                _glRotatef mouseY * 1.5, 1, 0, 0
                 _glCallList textured_model_buffer
+                _glPopMatrix
                 EXIT FOR
             END IF
             '#################################################
@@ -520,7 +514,7 @@ SUB _GL () STATIC
                     IF surface_init = 0 THEN
                         surface_init = 1
 
-                        IF LEN(material_file$) THEN
+                        IF use_material THEN
                             IF model_faces(i).material.texture < -1 THEN
 
                                 GLH_Select_Texture material(model_faces(i).material.id).gl_tex
@@ -556,7 +550,7 @@ SUB _GL () STATIC
                     END IF
 
                     current_model_material = model_faces(i).material.id
-                    IF LEN(material_file$) THEN
+                    IF use_material THEN
                         IF last_used_material <> current_model_material THEN
                             last_used_material = current_model_material
                             _glEnd
@@ -604,7 +598,6 @@ SUB _GL () STATIC
                 END IF
             NEXT
             _glEnd
-            _glPopMatrix
         NEXT
         IF done_task1 = 1 THEN
             done_task1 = 2
@@ -617,15 +610,18 @@ SUB _GL () STATIC
             wire_frame_model_buffer = _glGenLists(1)
             _glNewList wire_frame_model_buffer, _GL_COMPILE
         END IF
-        _glPushMatrix 'push
-        _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
-        _glRotatef mouseY * 1.5, 1, 0, 0
-        IF done_task2 = 2 THEN
-            _glCallList wire_frame_model_buffer
-        END IF
+
         '####################################################
         _glColor3f 1, 1, 1
         FOR i = 1 TO UBOUND(model_faces)
+            IF done_task2 = 2 THEN
+                _glPushMatrix 'push
+                _glRotatef -mouseX * 1.5, 0, 1, 0 'rotate the world
+                _glRotatef mouseY * 1.5, 1, 0, 0
+                _glCallList wire_frame_model_buffer
+                _glPopMatrix
+                EXIT FOR
+            END IF
             _glBegin _GL_LINE_LOOP
             _glNormal3f model_faces(i).v1.vn.x, model_faces(i).v1.vn.y, model_faces(i).v1.vn.z
             _glVertex3f model_faces(i).v1.v.x, model_faces(i).v1.v.y, model_faces(i).v1.v.z
@@ -637,8 +633,8 @@ SUB _GL () STATIC
             _glVertex3f model_faces(i).v3.v.x, model_faces(i).v3.v.y, model_faces(i).v3.v.z
             _glEnd
         NEXT
-        _glPopMatrix
         IF done_task2 = 1 THEN
+            done_task2 = 2
             _glEndList
         END IF
     END IF
