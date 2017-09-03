@@ -36,7 +36,7 @@ _GLRENDER _BEHIND
 DIM SHARED model_texture_file$, model_file$, use_material
 
 use_material = 0
-model_file$ = "models/oil_container.obj"
+model_file$ = "models/pyramid.obj"
 model_texture_file$ = ""
 IF _COMMANDCOUNT = 1 OR _COMMANDCOUNT = 2 THEN model_file$ = COMMAND$(1)
 
