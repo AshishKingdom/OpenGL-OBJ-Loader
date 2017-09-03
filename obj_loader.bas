@@ -109,7 +109,7 @@ vn_count = 0
 face_count = 0
 
 PRINT "Getting Information about model. Please be patient."
-start_time# = timer
+start_time# = TIMER
 OPEN model_file$ FOR INPUT AS #f
 WHILE NOT EOF(f)
     LINE INPUT #f, info$
@@ -140,23 +140,23 @@ WHILE NOT EOF(f)
         CASE "mt"
             IF Word$(model_data$, 1) = "mtllib" THEN
                 material_file$ = Word$(model_data$, 2)
-				IF INSTR(material_file$, ":") = 0 THEN material_file$ = path_to_model$ + material_file$
+                IF INSTR(material_file$, ":") = 0 THEN material_file$ = path_to_model$ + material_file$
                 '################ Materials #########################
                 IF material_file$ <> "" AND _FILEEXISTS(material_file$) THEN
-				
-					print "Reading Material File : ";material_file$
-					
+                
+                    PRINT "Reading Material File : "; material_file$
+                    
                     IF mtl = 0 THEN REDIM SHARED material(1) AS model_material: mtl = 1
-					
-					material_file_handle = freefile
-					
+                    
+                    material_file_handle = FREEFILE
+                    
                     OPEN material_file$ FOR INPUT AS #material_file_handle
-					
+                    
                     WHILE NOT EOF(material_file_handle)
                         LINE INPUT #material_file_handle, info$
                         IF LEFT$(info$, 6) = "newmtl" THEN
                             REDIM _PRESERVE SHARED material(mtl + 1) AS model_material
-							mtl = mtl+1
+                            mtl = mtl + 1
                             material(mtl).mtl_name = Word$(info$, 2)
                             material(mtl).id = mtl
                         END IF
@@ -194,38 +194,38 @@ WHILE NOT EOF(f)
                         END IF
                         'texture mapping
                         IF LEFT$(info$, 6) = "map_Kd" THEN
-						
+                        
                             temp_image_file$ = Word$(info$, 2)
                             IF INSTR(temp_image_file$, ":") = 0 THEN temp_image_file$ = path_to_model$ + temp_image_file$
                             PRINT "Attempting to Load Image : - "; temp_image_file$
-							
+                            
                             IF _FILEEXISTS(temp_image_file$) THEN
                                 PRINT "Image exists : "; temp_image_file$
                                 temp_image_handle = _LOADIMAGE(temp_image_file$, 32)
-								
+                                
                                 IF temp_image_handle < -1 THEN
                                     material(mtl).texture = temp_image_handle
                                     PRINT "Image loaded successfully : "; temp_image_file$
                                 ELSE
                                     PRINT "Failed to load image : "; temp_image_file$
                                 END IF
-								
+                                
                             ELSE
                                 PRINT temp_image_file$; " : file doesn't exists"
                             END IF
-							
+                            
                         END IF
                         PRINT ".";
                     WEND
                     CLOSE #material_file_handle
-					use_material = -1
+                    use_material = -1
                 END IF
             END IF
         CASE "o "
             o = o + 1
             current_object_name$ = Word$(model_data$, 2)
             PRINT "[Object:- "; current_object_name$; "]"
-			totalObjects = totalObjects + 1
+            totalObjects = totalObjects + 1
         CASE "us"
             IF Word$(model_data$, 1) = "usemtl" AND use_material THEN
                 current_material_name$ = Word$(model_data$, 2)
@@ -381,7 +381,7 @@ WHILE NOT EOF(f)
     g = g + 1
 WEND
 CLOSE #f
-time_taken# = timer-start_time#
+time_taken# = TIMER - start_time#
 
 CLS
 
@@ -419,7 +419,7 @@ DO
     mouseX = _MOUSEX
     mouseY = _MOUSEY
     CLS , 1
-	PRINT "TIME TAKEN TO LOAD : ";time_taken#;"s"
+    PRINT "TIME TAKEN TO LOAD : "; time_taken#; "s"
     PRINT "Press 'w' & 's' to move forward & backward"
     PRINT "Press 'a' & 'd' to move left & right"
     PRINT "Pres 'q' & 'e' to move up & down"
