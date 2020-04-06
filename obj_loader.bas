@@ -36,18 +36,11 @@ TYPE material_info
     trans AS SINGLE 'transparency
 END TYPE
 
-TYPE object_info
-    start AS _UNSIGNED LONG
-    length AS _UNSIGNED LONG
-    init AS _BYTE
-    mtl AS material_info
-END TYPE
-
 TYPE mesh_part_info
-    start AS _UNSIGNED LONG
-    length AS _UNSIGNED LONG
-    init AS _BYTE
-    mtl AS material_info
+    start AS _UNSIGNED LONG 'start index of mesh()
+    length AS _UNSIGNED LONG 'length
+    init AS _BYTE 'intialize? 
+    mtl AS material_info 'material properties
 END TYPE
 
 DECLARE LIBRARY 'camera control function
@@ -55,9 +48,9 @@ DECLARE LIBRARY 'camera control function
 END DECLARE
 
 
-f$ = "young_tree.obj"
-IF COMMAND$(1) <> "" THEN f$ = COMMAND$(1)
-
+f$ = "models/pyramid.obj"
+IF COMMAND$(1) <> "" THEN f$ = COMMAND$(1) 'load the file if passed from commandline
+'seprate file name and path
 x = _INSTRREV(f$, "/") + _INSTRREV(f$, "\")
 IF x = 0 THEN
     obj_file$ = f$
@@ -66,12 +59,12 @@ ELSE
     path$ = LEFT$(f$, x)
 END IF
 
-DIM tag(4) AS STRING * 3, p(4) AS _UNSIGNED LONG
-DIM SHARED v(4) AS _UNSIGNED LONG
-REDIM vert(2) AS SINGLE, norm(2) AS SINGLE, texcoord(1) AS SINGLE
-REDIM SHARED mesh(23) AS SINGLE '(3 vert + 2 tex coord + 3 norm )* 3 vert of triangle
-REDIM SHARED materials(0) AS material_info, mesh_part(0) AS mesh_part_info
-DIM SHARED materialPresent
+DIM tag(4) AS STRING * 3, p(4) AS _UNSIGNED LONG 'tag() contain keywords like v, vt, etc. p() store the position for each keywords independently
+DIM SHARED v(4) AS _UNSIGNED LONG 'v(0) -> no. of vertices, v(1)->no. of tex. coord.,v(2)->no. of normals, v(3)->no. of faces
+REDIM vert(2) AS SINGLE, norm(2) AS SINGLE, texcoord(1) AS SINGLE 'vert(), norm() and texcoord() will store all the vertices, normals and texture coordinates()
+REDIM SHARED mesh(23) AS SINGLE '(3 vert + 2 tex coord + 3 norm )* 3 vert of triangle : This is the main data which we will pass to OpenGL
+REDIM SHARED materials(0) AS material_info, mesh_part(0) AS mesh_part_info 'contain properties of mesh like materials
+DIM SHARED materialPresent 
 DIM SHARED glAllow
 
 tag(0) = CHR$(10) + "v ": tag(1) = CHR$(10) + "vt": tag(2) = CHR$(10) + "vn": tag(3) = CHR$(10) + "f ": tag(4) = CHR$(10) + "o "
@@ -94,41 +87,41 @@ IF x THEN 'yes it exits
     OPEN mtl_file$ FOR INPUT AS #2
     WHILE NOT EOF(2)
         LINE INPUT #2, b$
-        IF LEFT$(b$, 1) <> "#" THEN
-            IF LEFT$(b$, 6) = "newmtl" THEN
+        IF LEFT$(b$, 1) <> "#" THEN 'to avoid comments. Comments in OBJ/MTL start with #
+            IF LEFT$(b$, 6) = "newmtl" THEN 'new material
                 mtl_index = mtl_index + 1
                 REDIM _PRESERVE materials(mtl_index) AS material_info
                 materials(mtl_index).id = _TRIM$(MID$(b$, 7, LEN(b$) - 6))
                 materials(mtl_index).exits = 1
-            ELSEIF LEFT$(b$, 2) = "Ka" THEN
+            ELSEIF LEFT$(b$, 2) = "Ka" THEN 'ambient
                 y1 = INSTR(4, b$, " ")
                 y2 = INSTR(y1 + 1, b$, " ")
                 materials(mtl_index).amb.x = VAL(MID$(b$, 4, y1 - 3))
                 materials(mtl_index).amb.y = VAL(MID$(b$, y1, y2 - y1 + 1))
                 materials(mtl_index).amb.z = VAL(RIGHT$(b$, LEN(b$) - y2 + 1))
-            ELSEIF LEFT$(b$, 2) = "Kd" THEN
+            ELSEIF LEFT$(b$, 2) = "Kd" THEN 'diffuse
                 y1 = INSTR(4, b$, " ")
                 y2 = INSTR(y1 + 1, b$, " ")
                 materials(mtl_index).diff.x = VAL(MID$(b$, 4, y1 - 3))
                 materials(mtl_index).diff.y = VAL(MID$(b$, y1, y2 - y1 + 1))
                 materials(mtl_index).diff.z = VAL(RIGHT$(b$, LEN(b$) - y2 + 1))
-            ELSEIF LEFT$(b$, 2) = "Ks" THEN
+            ELSEIF LEFT$(b$, 2) = "Ks" THEN 'specular
                 y1 = INSTR(4, b$, " ")
                 y2 = INSTR(y1 + 1, b$, " ")
                 materials(mtl_index).spec.x = VAL(MID$(b$, 4, y1 - 3))
                 materials(mtl_index).spec.y = VAL(MID$(b$, y1, y2 - y1 + 1))
                 materials(mtl_index).spec.z = VAL(RIGHT$(b$, LEN(b$) - y2 + 1))
-            ELSEIF LEFT$(b$, 2) = "Ke" THEN
+            ELSEIF LEFT$(b$, 2) = "Ke" THEN 'emission
                 y1 = INSTR(4, b$, " ")
                 y2 = INSTR(y1 + 1, b$, " ")
                 materials(mtl_index).emis.x = VAL(MID$(b$, 4, y1 - 3))
                 materials(mtl_index).emis.y = VAL(MID$(b$, y1, y2 - y1 + 1))
                 materials(mtl_index).emis.z = VAL(RIGHT$(b$, LEN(b$) - y2 + 1))
-            ELSEIF LEFT$(b$, 2) = "Ns" THEN
+            ELSEIF LEFT$(b$, 2) = "Ns" THEN 'shineness
                 materials(mtl_index).shine = VAL(MID$(b$, 3, LEN(b$) - 2))
-            ELSEIF LEFT$(b$, 2) = "d " THEN
+            ELSEIF LEFT$(b$, 2) = "d " THEN 'transparency
                 materials(mtl_index).trans = VAL(MID$(b$, 2, LEN(b$) - 1))
-            ELSEIF LEFT$(b$, 6) = "map_Kd" THEN
+            ELSEIF LEFT$(b$, 6) = "map_Kd" THEN 'texture file name
                 img_file$ = path$ + _TRIM$(MID$(b$, 7, LEN(b$) - 6))
                 dummy_img& = _LOADIMAGE(img_file$)
                 IF NOT dummy_img& < -1 THEN PRINT "ERROR : Could not load the texture - " + img_file$: END
@@ -140,21 +133,22 @@ IF x THEN 'yes it exits
 END IF
 
 t = TIMER
-_TITLE "Loading - " + f$
+_TITLE "OBJ Loader v2.0"
+PRINT "Loading... - "+f$
 $CHECKING:OFF
 p(0) = 1: p(1) = 1: p(2) = 1: p(3) = 1: p(4) = 1
-o_first = INSTR(1, a$, tag(4)): o_second = INSTR(o_first + 1, a$, tag(4))
+'get position of first mention of material to be used
 mtl_first = INSTR(1, a$, LINE_FEED + "usemtl"): mtl_second = INSTR(mtl_first + 1, a$, LINE_FEED + "usemtl")
 mtl_id$ = _TRIM$(MID$(a$, mtl_first + 8, INSTR(mtl_first + 8, a$, LINE_FEED) - (mtl_first + 8)))
 FOR j = 0 TO UBOUND(materials)
     IF RTRIM$(materials(j).id) = mtl_id$ THEN mtl_index = j: EXIT FOR
 NEXT
-
+'This is the main loop of reading the file. It does all the things which is required.
 DO
     x = INSTR(p(c), a$, tag(c))
     IF x > 0 THEN
         v(c) = v(c) + 1
-        IF c = 0 THEN
+        IF c = 0 THEN 'store vertices
             y1 = INSTR(x + 3, a$, " ")
             y2 = INSTR(y1 + 1, a$, " ")
             y3 = INSTR(y2 + 1, a$, LINE_FEED)
@@ -163,14 +157,14 @@ DO
             vert(v_index + 2) = VAL(MID$(a$, y2, y3 - y2))
             v_index = v_index + 3
             REDIM _PRESERVE vert(UBOUND(vert) + 3) AS SINGLE
-        ELSEIF c = 1 THEN
+        ELSEIF c = 1 THEN 'store tex coord.
             y1 = INSTR(x + 4, a$, " ")
             y2 = INSTR(y1 + 1, a$, LINE_FEED)
             texcoord(vt_index) = VAL(MID$(a$, x + 4, y1 - (x + 4)))
             texcoord(vt_index + 1) = -VAL(MID$(a$, y1, y2 - y1))
             vt_index = vt_index + 2
             REDIM _PRESERVE texcoord(UBOUND(texcoord) + 2) AS SINGLE
-        ELSEIF c = 2 THEN
+        ELSEIF c = 2 THEN 'store normals
             y1 = INSTR(x + 4, a$, " ")
             y2 = INSTR(y1 + 1, a$, " ")
             y3 = INSTR(y2 + 1, a$, LINE_FEED)
@@ -179,7 +173,8 @@ DO
             norm(vn_index + 2) = VAL(MID$(a$, y2, y3 - y2))
             vn_index = vn_index + 3
             REDIM _PRESERVE norm(UBOUND(norm) + 3) AS SINGLE
-        ELSEIF c = 3 THEN
+        ELSEIF c = 3 THEN 'face part
+			'check if there is new material to be used for face. If not then array length for current mesh_info() increases
             check_for_obj:
             IF x > mtl_first AND x < mtl_second OR mtl_second = 0 THEN
                 IF mesh_part(mp_index).init = 0 THEN mesh_part(mp_index).init = 1: mesh_part(mp_index).start = m_index / 8: mesh_part(mp_index).mtl = materials(mtl_index)
@@ -195,11 +190,12 @@ DO
                 REDIM _PRESERVE mesh_part(mp_index) AS mesh_part_info
                 GOTO check_for_obj
             END IF
+			'reading of face data comes heer
             spc_1 = x + 2: spc_2 = INSTR(spc_1 + 1, a$, " ")
             y_max = INSTR(x + 1, a$, LINE_FEED)
 
             n = -1 'so start with 0 in while loop
-            'get the each vertex info which are sperated by space
+            'get the each vertex info block which are sperated by space
             REDIM dat(0) AS STRING
             WHILE 1 'spc_2<y_max
                 n = n + 1
@@ -333,8 +329,9 @@ PRINT "No. of normals : "; v(2)
 PRINT "No. of objects : "; v(4)
 PRINT "No. of faces : "; v(3)
 PRINT "No. of materials : "; UBOUND(materials) + 1
+PRINT "Hit ENTER"
 SLEEP
-
+ERASE vert, norm, texcoord 'not require now. So save memory whenever possible.
 a$ = ""
 
 DIM SHARED worldRotX, worldRotY, scaleFactor, mode, light
@@ -368,17 +365,15 @@ SUB _GL ()
     STATIC aspect, init
     IF glAllow = 0 THEN EXIT SUB
 
-    IF init = 0 THEN
+    IF init = 0 THEN 'load all the textures if the model uses any
         FOR i = 0 TO UBOUND(mesh_part)
             IF mesh_part(i).mtl.img_tex < -1 THEN mesh_part(i).mtl.gl_tex = feedGLTexture(mesh_part(i).mtl.img_tex)
         NEXT
         init = 1
         aspect = _WIDTH / _HEIGHT
     END IF
-    IF tmp = 0 THEN t = TIMER
-    tmp = tmp + 1
-    IF TIMER - t >= 1 THEN dely = tmp: tmp = 0
-    _glDisable _GL_MULTISAMPLE
+ 
+    _glDisable _GL_MULTISAMPLE 'just to increase a little bit speed. Comment this line, you will get much better view
 
     _glEnable _GL_DEPTH_TEST
     IF light = 1 THEN
@@ -404,7 +399,7 @@ SUB _GL ()
     _glRotatef worldRotX, 1, 0, 0
     _glRotatef worldRotY, 0, 1, 0
 
-    FOR i = 0 TO UBOUND(mesh_part)
+    FOR i = 0 TO UBOUND(mesh_part) 'draw the mesh
 
         IF materialPresent = 1 THEN
             IF mesh_part(i).mtl.trans = 1 THEN _glDisable _GL_BLEND ELSE _glEnable _GL_BLEND
@@ -431,6 +426,8 @@ SUB _GL ()
     _glDisableClientState _GL_NORMAL_ARRAY
     _glDisableClientState _GL_TEXTURE_COORD_ARRAY
 END SUB
+
+'################# Internal Functions ##################################
 
 FUNCTION feedGLTexture& (img AS LONG)
     IF img < -1 THEN
