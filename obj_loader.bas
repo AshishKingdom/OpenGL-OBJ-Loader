@@ -14,6 +14,7 @@
 ' Use spacebar to switch between rendering options.
 '
 
+_TITLE "OBJ Loader v2.0"
 SCREEN _NEWIMAGE(1000, 700, 32)
 
 TYPE vec3
@@ -79,8 +80,11 @@ CLOSE #1
 'check if the mtl file exits for the given OBJ
 x = INSTR(1, a$, LINE_FEED + "mtllib")
 IF x THEN 'yes it exits
-    mtl_file$ = path$ + _TRIM$(MID$(a$, x + 8, INSTR(x + 8, a$, LINE_FEED) - (x + 8)))
-    IF NOT _FILEEXISTS(mtl_file$) THEN PRINT "ERROR : Could not load materials - " + mtl_file$: END
+	for i = x+8 to len(a$)
+		if mid$(a$,i,1) = chr$(13) or mid$(a$,i,1) = LINE_FEED then y = i : exit for 
+	next
+    mtl_file$ = path$ + _TRIM$(MID$(a$, x + 8, y - (x + 8)))
+    IF NOT _FILEEXISTS(mtl_file$) THEN PRINT "ERROR : File not found - " + mtl_file$: END
     x = 1
     materialPresent = 1
     mtl_index = -1 'so it start with 0 in the loop
@@ -133,9 +137,8 @@ IF x THEN 'yes it exits
 END IF
 
 t = TIMER
-_TITLE "OBJ Loader v2.0"
 PRINT "Loading... - "+f$
-$CHECKING:OFF
+' $CHECKING:OFF
 p(0) = 1: p(1) = 1: p(2) = 1: p(3) = 1: p(4) = 1
 'get position of first mention of material to be used
 mtl_first = INSTR(1, a$, LINE_FEED + "usemtl"): mtl_second = INSTR(mtl_first + 1, a$, LINE_FEED + "usemtl")
@@ -277,12 +280,11 @@ DO
                 IF (n + 1) > 3 THEN
                     'reference for first vertex of a polygon
                     v_r1 = (VAL(LEFT$(dat(0), z_ref(0, 0))) - 1) * 3
-                    vt_r1 = (VAL(MID$(dat(0), z_ref(0, 0) + 1, z_ref(0, 1) - (z_ref(0, 0) + 1))) - 1) * 3
                     vn_r1 = (VAL(RIGHT$(dat(0), LEN(dat(0)) - z_ref(0, 1))) - 1) * 3
+                    vt_r1 = (VAL(MID$(dat(0), z_ref(0, 0) + 1, z_ref(0, 1) - (z_ref(0, 0) + 1))) - 1) * 2
                     FOR i = 3 TO (n + 1)
                         v_r2 = (VAL(LEFT$(dat(i - 2), z_ref(i - 2, 0))) - 1) * 3: vn_r2 = (VAL(RIGHT$(dat(i - 2), LEN(dat(i - 2)) - z_ref((i - 2), 1))) - 1) * 3: vt_r2 = (VAL(MID$(dat(i - 2), z_ref(i - 2, 0) + 1, z_ref(i - 2, 1) - (z_ref(i - 2, 0) + 1))) - 1) * 2
                         v_r3 = (VAL(LEFT$(dat(i - 1), z_ref(i - 1, 0))) - 1) * 3: vn_r3 = (VAL(RIGHT$(dat(i - 1), LEN(dat(i - 1)) - z_ref((i - 1), 1))) - 1) * 3: vt_r3 = (VAL(MID$(dat(i - 1), z_ref(i - 1, 0) + 1, z_ref(i - 1, 1) - (z_ref(i - 1, 0) + 1))) - 1) * 2
-
                         mesh(m_index) = vert(v_r1): mesh(m_index + 1) = vert(v_r1 + 1): mesh(m_index + 2) = vert(v_r1 + 2)
                         mesh(m_index + 3) = texcoord(vt_r1): mesh(m_index + 4) = texcoord(vt_r1 + 1)
                         mesh(m_index + 5) = norm(vn_r1): mesh(m_index + 6) = norm(vn_r1 + 1): mesh(m_index + 7) = norm(vn_r1 + 2)
@@ -292,7 +294,7 @@ DO
                         mesh(m_index + 5) = norm(vn_r2): mesh(m_index + 6) = norm(vn_r2 + 1): mesh(m_index + 7) = norm(vn_r2 + 2)
                         m_index = m_index + 8
                         mesh(m_index) = vert(v_r3): mesh(m_index + 1) = vert(v_r3 + 1): mesh(m_index + 2) = vert(v_r3 + 2)
-                        mesh(m_index + 3) = texcoord(vt_r3): mesh(m_index + 4) = texcoord(vt_r1 + 1)
+                        mesh(m_index + 3) = texcoord(vt_r3): mesh(m_index + 4) = texcoord(vt_r3 + 1)
                         mesh(m_index + 5) = norm(vn_r3): mesh(m_index + 6) = norm(vn_r3 + 1): mesh(m_index + 7) = norm(vn_r3 + 2)
                         m_index = m_index + 8
                         REDIM _PRESERVE mesh(UBOUND(mesh) + 24) AS SINGLE
@@ -321,7 +323,7 @@ DO
     END IF
     x = 0
 LOOP
-$CHECKING:ON
+' $CHECKING:ON
 PRINT TIMER - t; "s"
 PRINT "No. of vertices : "; v(0)
 PRINT "No. of tex coord : "; v(1)
@@ -372,7 +374,10 @@ SUB _GL ()
         init = 1
         aspect = _WIDTH / _HEIGHT
     END IF
- 
+	
+	_glClearColor 0.49,0.49,0.49, 1.0
+	_glClear _GL_DEPTH_BUFFER_BIT OR _GL_COLOR_BUFFER_BIT
+	
     _glDisable _GL_MULTISAMPLE 'just to increase a little bit speed. Comment this line, you will get much better view
 
     _glEnable _GL_DEPTH_TEST
