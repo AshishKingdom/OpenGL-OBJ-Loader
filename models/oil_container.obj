@@ -1,6 +1,7 @@
 # Blender v2.78 (sub 0) OBJ File: ''
 # www.blender.org
 mtllib oil_container.mtl
+
 o Object01
 v 0.166011 0.597025 0.429244
 v -0.186419 0.597025 0.429244
