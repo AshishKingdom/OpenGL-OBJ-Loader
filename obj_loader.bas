@@ -40,7 +40,7 @@ END TYPE
 TYPE mesh_part_info
     start AS _UNSIGNED LONG 'start index of mesh()
     length AS _UNSIGNED LONG 'length
-    init AS _BYTE 'intialize? 
+    init AS _BYTE 'intialize?
     mtl AS material_info 'material properties
 END TYPE
 
@@ -65,7 +65,7 @@ DIM SHARED v(4) AS _UNSIGNED LONG 'v(0) -> no. of vertices, v(1)->no. of tex. co
 REDIM vert(2) AS SINGLE, norm(2) AS SINGLE, texcoord(1) AS SINGLE 'vert(), norm() and texcoord() will store all the vertices, normals and texture coordinates()
 REDIM SHARED mesh(23) AS SINGLE '(3 vert + 2 tex coord + 3 norm )* 3 vert of triangle : This is the main data which we will pass to OpenGL
 REDIM SHARED materials(0) AS material_info, mesh_part(0) AS mesh_part_info 'contain properties of mesh like materials
-DIM SHARED materialPresent 
+DIM SHARED materialPresent
 DIM SHARED glAllow
 
 tag(0) = CHR$(10) + "v ": tag(1) = CHR$(10) + "vt": tag(2) = CHR$(10) + "vn": tag(3) = CHR$(10) + "f ": tag(4) = CHR$(10) + "o "
@@ -80,9 +80,9 @@ CLOSE #1
 'check if the mtl file exits for the given OBJ
 x = INSTR(1, a$, LINE_FEED + "mtllib")
 IF x THEN 'yes it exits
-	for i = x+8 to len(a$)
-		if mid$(a$,i,1) = chr$(13) or mid$(a$,i,1) = LINE_FEED then y = i : exit for 
-	next
+    FOR i = x + 8 TO LEN(a$)
+        IF MID$(a$, i, 1) = CHR$(13) OR MID$(a$, i, 1) = LINE_FEED THEN y = i: EXIT FOR
+    NEXT
     mtl_file$ = path$ + _TRIM$(MID$(a$, x + 8, y - (x + 8)))
     IF NOT _FILEEXISTS(mtl_file$) THEN PRINT "ERROR : File not found - " + mtl_file$: END
     x = 1
@@ -137,7 +137,7 @@ IF x THEN 'yes it exits
 END IF
 
 t = TIMER
-PRINT "Loading... - "+f$
+PRINT "Loading... - " + f$
 ' $CHECKING:OFF
 p(0) = 1: p(1) = 1: p(2) = 1: p(3) = 1: p(4) = 1
 'get position of first mention of material to be used
@@ -177,7 +177,7 @@ DO
             vn_index = vn_index + 3
             REDIM _PRESERVE norm(UBOUND(norm) + 3) AS SINGLE
         ELSEIF c = 3 THEN 'face part
-			'check if there is new material to be used for face. If not then array length for current mesh_info() increases
+            'check if there is new material to be used for face. If not then array length for current mesh_info() increases
             check_for_obj:
             IF x > mtl_first AND x < mtl_second OR mtl_second = 0 THEN
                 IF mesh_part(mp_index).init = 0 THEN mesh_part(mp_index).init = 1: mesh_part(mp_index).start = m_index / 8: mesh_part(mp_index).mtl = materials(mtl_index)
@@ -193,7 +193,7 @@ DO
                 REDIM _PRESERVE mesh_part(mp_index) AS mesh_part_info
                 GOTO check_for_obj
             END IF
-			'reading of face data comes heer
+            'reading of face data comes heer
             spc_1 = x + 2: spc_2 = INSTR(spc_1 + 1, a$, " ")
             y_max = INSTR(x + 1, a$, LINE_FEED)
 
@@ -374,10 +374,10 @@ SUB _GL ()
         init = 1
         aspect = _WIDTH / _HEIGHT
     END IF
-	
-	_glClearColor 0.49,0.49,0.49, 1.0
-	_glClear _GL_DEPTH_BUFFER_BIT OR _GL_COLOR_BUFFER_BIT
-	
+    
+    _glClearColor 0.49, 0.49, 0.49, 1.0
+    _glClear _GL_DEPTH_BUFFER_BIT OR _GL_COLOR_BUFFER_BIT
+    
     _glDisable _GL_MULTISAMPLE 'just to increase a little bit speed. Comment this line, you will get much better view
 
     _glEnable _GL_DEPTH_TEST
