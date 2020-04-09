@@ -31,6 +31,7 @@ TYPE material_info
     diff AS vec3 'diffuse
     spec AS vec3 'specular
     emis AS vec3 'emission
+	img_tex_name as STRING*128 'name of the image texture file name
     img_tex AS LONG 'image handle
     gl_tex AS LONG 'GL tex handle
     shine AS SINGLE 'shineness
@@ -42,6 +43,8 @@ TYPE mesh_part_info
     length AS _UNSIGNED LONG 'length
     init AS _BYTE 'intialize?
     mtl AS material_info 'material properties
+	origin as vec3 'origin of each mesh_part
+	hidden as _BYTE
 END TYPE
 
 DECLARE LIBRARY 'camera control function

@@ -1,47 +1,5 @@
-SCREEN _NEWIMAGE(600, 600, 32)
-
-REDIM SHARED myMesh(0) AS SINGLE, myMeshInfo(0) AS mesh_part_info, objFileInfo AS MDL_INFO
-
-DIM SHARED glAllow
-
-objLoad "models/oil_container.obj", myMesh(), myMeshInfo(), objFileInfo
-
-PRINT "No. of vertices : "; objFileInfo.num_of_vertices
-PRINT "No. of tex coord : "; objFileInfo.num_of_tex_coords
-PRINT "No. of normals : "; objFileInfo.num_of_normals
-PRINT "No. of objects : "; objFileInfo.num_of_objects
-PRINT "No. of faces : "; objFileInfo.num_of_faces
-PRINT "No. of materials : "; objFileInfo.num_of_materials
-
-glAllow = -1
-DO
-    _LIMIT 1
-LOOP
-
-SUB _GL ()
-    STATIC init, xrot, yrot
-    IF NOT glAllow THEN EXIT SUB
-    _glEnable _GL_LIGHTING
-    _glEnable _GL_LIGHT0
-    _glEnable _GL_DEPTH_TEST
-    _glEnable _GL_TEXTURE_2D
-
-    _glMatrixMode _GL_PROJECTION
-    _gluPerspective 50, 1, 0.1, 100
-
-    _glMatrixMode _GL_MODELVIEW
-    _glTranslatef 0, 0, -4
-
-    IF init = 0 THEN
-        init = 1
-        objInit myMeshInfo()
-    END IF
-    yrot = yrot + 1
-    _glRotatef yrot, 0, 1, 0
-    objDraw myMesh(), myMeshInfo(), objFileInfo
-    
-END SUB
-
+'An LIBRARY version of OBJ Loader
+'Contain useful Functions/methods for your making your 3D Apps/Games
 
 SUB internal_OBJ_types ()
     TYPE MDL_INFO
@@ -70,6 +28,7 @@ SUB internal_OBJ_types ()
         diff AS vec3 'diffuse
         spec AS vec3 'specular
         emis AS vec3 'emission
+        img_tex_name AS STRING * 128 'name of the image texture file name
         img_tex AS LONG 'image handle
         gl_tex AS LONG 'GL tex handle
         shine AS SINGLE 'shineness
@@ -81,8 +40,130 @@ SUB internal_OBJ_types ()
         length AS _UNSIGNED LONG 'length
         init AS _BYTE 'intialize?
         mtl AS material_info 'material properties
+		origin as vec3 'origin of each mesh_part
+		atOrigin as _BYTE 'is it at the origin
+		hidden as _BYTE 'if hidden, it will not render when calling with objDraw(). However, it can be made render by objDrawMeshPart()
     END TYPE
 
+END SUB
+
+SUB objHideMeshPart (which$, mesh_part() as mesh_part_info)
+	for i = 0 to ubound(mesh_part)
+		if _TRIM$(mesh_part(i).mtl.id) = which$ then
+			mesh_part(i).hidden = -1
+			exit sub
+		end if
+	next
+end sub
+
+SUB objUnhideMeshPart (which$, mesh_part() as mesh_part_info)
+	for i = 0 to ubound(mesh_part)
+		if _TRIM$(mesh_part(i).mtl.id) = which$ then
+			mesh_part(i).hidden = 0
+			exit sub
+		end if
+	next
+end sub
+
+sub setMeshPartOrigin (which$, mesh_part() as mesh_part_info, mesh() as single)
+	for i = 0 to ubound(mesh_part)
+		if _TRIM$(mesh_part(i).mtl.id) = which$ then
+			if NOT mesh_part(i).atOrigin then
+				for j = 8*mesh_part(i).start to 8*(mesh_part(i).start + mesh_part(i).length -1 ) step 8
+					mesh(j) = mesh(j) - mesh_part(i).origin.x
+					mesh(j+1) = mesh(j+1) - mesh_part(i).origin.y
+					mesh(j+2) = mesh(j+2) - mesh_part(i).origin.z
+				next
+				mesh_part(i).atOrigin = -1
+			end if
+			_glTranslatef mesh_part(i).origin.x,mesh_part(i).origin.y,mesh_part(i).origin.z
+			' ? mesh_part(i).origin.x,mesh_part(i).origin.y,mesh_part(i).origin.z
+			exit sub
+		end if
+	next
+end sub
+
+sub resetMeshPartOrigin (which$, mesh_part() as mesh_part_info, mesh() as single)
+	for i = 0 to ubound(mesh_part)
+		if _TRIM$(mesh_part(i).mtl.id) = which$ then
+			if mesh_part(i).atOrigin then
+				for j = 8*mesh_part(i).start to 8*(mesh_part(i).start + mesh_part(i).length - 1) step 8
+					mesh(j) = mesh(j) + mesh_part(i).origin.x
+					mesh(j+1) = mesh(j+1) + mesh_part(i).origin.y
+					mesh(j+2) = mesh(j+2) + mesh_part(i).origin.z
+				next
+				mesh_part(i).atOrigin = 0
+			end if
+			exit sub
+		end if
+	next
+end sub
+
+SUB objImportBin (inFile$, mesh() AS SINGLE, mesh_part() AS mesh_part_info, mdl_info AS MDL_INFO)
+    REDIM mesh(0) AS SINGLE, mesh_part(0) AS mesh_part_info
+    x = _INSTRREV(inFile$, "/") + _INSTRREV(inFile$, "\")
+    DIM path$, count AS _UNSIGNED LONG
+    path$ = LEFT$(inFile$, x)
+    
+    f = FREEFILE
+    
+    OPEN inFile$ FOR BINARY AS #f
+    GET #f, , mdl_info
+    GET #f, , count
+    REDIM mesh_part(count) AS mesh_part_info
+    GET #f, , mesh_part()
+    GET #f, , count
+    REDIM mesh(count) AS SINGLE
+    GET #f, , mesh()
+    CLOSE #f
+    
+    FOR i = 0 TO UBOUND(mesh_part)
+        mesh_part(i).mtl.img_tex = 0
+        mesh_part(i).mtl.gl_tex = 0
+        mesh_part(i).mtl.img_tex = _LOADIMAGE(path$ + _TRIM$(mesh_part(i).mtl.img_tex_name))
+    NEXT
+END SUB
+
+SUB objExportBin (outFile$, mesh() AS SINGLE, mesh_part() AS mesh_part_info, mdl_info AS MDL_INFO)
+    IF _FILEEXISTS(outFile$) THEN KILL outFile$
+    DIM count AS _UNSIGNED LONG, mn as vec3, mx as vec3
+    
+	'just to calculate origin of each mesh part by simple the mean of their max & min position vector
+	for i = 0 to ubound(mesh_part)
+		' ? "ID : ";_TRIM$(mesh_part(i).mtl.id)
+		count = 8*mesh_part(i).start
+		mn.x = mesh(count) : mn.y = mesh(count+1) : mn.z = mesh(count+2)
+		mx.x = mesh(count) : mx.y = mesh(count+1) : mx.z = mesh(count+2)
+		' ? "Max : (";mx.x;",";mx.y;",";mx.z;")"
+		' ? "Min : (";mn.x;",";mn.y;",";mn.z;")"
+		for j = count to count + 8*(mesh_part(i).length-1) step 8
+			if mn.x>=mesh(j) then mn.x = mesh(j)
+			if mn.y>=mesh(j+1) then mn.y = mesh(j+1)
+			if mn.z>=mesh(j+2) then mn.z = mesh(j+2)
+			
+			if mx.x<=mesh(j) then mx.x = mesh(j)
+			if mx.y<=mesh(j+1) then mx.y = mesh(j+1)
+			if mx.z<=mesh(j+2) then mx.z = mesh(j+2)
+		next
+		' ? "Max : (";mx.x;",";mx.y;",";mx.z;")"
+		' ? "Min : (";mn.x;",";mn.y;",";mn.z;")"
+		' sleep
+		mesh_part(i).origin.x = (mn.x + mx.x) * 0.5
+		mesh_part(i).origin.y = (mn.y + mx.y) * 0.5
+		mesh_part(i).origin.z = (mn.z + mx.z) * 0.5
+		
+	next
+	
+    f = FREEFILE
+    OPEN outFile$ FOR BINARY AS #f
+    PUT #f, , mdl_info 'MODEL GENERAL INFO
+    count = UBOUND(mesh_part) 'length of mesh_part() array
+    PUT #f, , count
+    PUT #f, , mesh_part()
+    count = UBOUND(mesh) 'length of mesh() array
+    PUT #f, , count
+    PUT #f, , mesh()
+    CLOSE #f
 END SUB
 
 SUB objInit (mesh_part() AS mesh_part_info)
@@ -91,9 +172,39 @@ SUB objInit (mesh_part() AS mesh_part_info)
     NEXT
 END SUB
 
+SUB objDrawMeshPart (which$, mesh() AS SINGLE, mesh_part() AS mesh_part_info, mdl_info AS MDL_INFO)
+	for i = 0 to ubound(mesh_part)
+		if which$ = _TRIM$(mesh_part(i).mtl.id) then
+			IF mesh_part(i).mtl.trans = 1 THEN _glDisable _GL_BLEND ELSE _glEnable _GL_BLEND
+			_glMaterialfv _GL_FRONT, _GL_AMBIENT, glVec4(mesh_part(i).mtl.amb.x, mesh_part(i).mtl.amb.y, mesh_part(i).mtl.amb.z, mesh_part(i).mtl.trans)
+			_glMaterialfv _GL_FRONT, _GL_DIFFUSE, glVec4(mesh_part(i).mtl.diff.x, mesh_part(i).mtl.diff.y, mesh_part(i).mtl.diff.z, mesh_part(i).mtl.trans)
+			_glMaterialfv _GL_FRONT, _GL_SPECULAR, glVec4(mesh_part(i).mtl.spec.x, mesh_part(i).mtl.spec.y, mesh_part(i).mtl.spec.z, mesh_part(i).mtl.trans)
+			_glMaterialfv _GL_FRONT, _GL_EMISSION, glVec4(mesh_part(i).mtl.emis.x, mesh_part(i).mtl.emis.y, mesh_part(i).mtl.emis.z, mesh_part(i).mtl.trans)
+			_glMaterialfv _GL_FRONT, _GL_SHININESS, glVec4(mesh_part(i).mtl.shine * 0.128, 0, 0, 0)
+			_glEnableClientState _GL_VERTEX_ARRAY
+			_glVertexPointer 3, _GL_FLOAT, 32, _OFFSET(mesh()) + 32 * mesh_part(i).start
+			IF mdl_info.num_of_tex_coords > 0 THEN
+				selectTexture mesh_part(i).mtl.gl_tex
+				_glEnableClientState _GL_TEXTURE_COORD_ARRAY
+				_glTexCoordPointer 3, _GL_FLOAT, 32, _OFFSET(mesh()) + 12 + 32 * mesh_part(i).start
+			END IF
+			IF mdl_info.num_of_normals > 0 THEN
+				_glEnableClientState _GL_NORMAL_ARRAY
+				_glNormalPointer _GL_FLOAT, 32, _OFFSET(mesh()) + 20 + 32 * mesh_part(i).start
+			END IF
+			IF mdl_info.mode = 1 THEN _glDrawArrays _GL_TRIANGLES, 0, mesh_part(i).length
+			IF mdl_info.mode = 2 THEN _glDrawArrays _GL_LINES, 0, mesh_part(i).length
+			
+			exit sub
+		end if
+	next
+    _glDisableClientState _GL_VERTEX_ARRAY
+    _glDisableClientState _GL_NORMAL_ARRAY
+    _glDisableClientState _GL_TEXTURE_COORD_ARRAY
+END SUB
 SUB objDraw (mesh() AS SINGLE, mesh_part() AS mesh_part_info, mdl_info AS MDL_INFO)
     FOR i = 0 TO UBOUND(mesh_part) 'draw the mesh
-
+		if mesh_part(i).hidden then _continue 'no need to draw the hidden/unactive part (if there)
         IF mdl_info.materialPresent = 1 THEN
             IF mesh_part(i).mtl.trans = 1 THEN _glDisable _GL_BLEND ELSE _glEnable _GL_BLEND
             _glMaterialfv _GL_FRONT, _GL_AMBIENT, glVec4(mesh_part(i).mtl.amb.x, mesh_part(i).mtl.amb.y, mesh_part(i).mtl.amb.z, mesh_part(i).mtl.trans)
@@ -197,6 +308,7 @@ SUB objLoad (f$, mesh() AS SINGLE, mesh_part() AS mesh_part_info, mdl_info AS MD
                     materials(mtl_index).trans = VAL(MID$(b$, 2, LEN(b$) - 1))
                 ELSEIF LEFT$(b$, 6) = "map_Kd" THEN 'texture file name
                     img_file$ = path$ + _TRIM$(MID$(b$, 7, LEN(b$) - 6))
+                    materials(mtl_index).img_tex_name = _TRIM$(MID$(b$, 7, LEN(b$) - 6))
                     dummy_img& = _LOADIMAGE(img_file$)
                     IF NOT dummy_img& < -1 THEN PRINT "ERROR : Could not load the texture - " + img_file$: END
                     materials(mtl_index).img_tex = dummy_img&
